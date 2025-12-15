@@ -1,0 +1,6 @@
+./backend/build/
+./backend/node_modules/
+./backend/target/
+./backend/vendor/
+./backend/__pycache__/
+./backend/.venv/

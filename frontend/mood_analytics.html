@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Analytics - Mindful Journey</title>
+    <link rel="stylesheet" href="style.css?v=7">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 0.5rem 0;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .trend-indicator {
+            font-size: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .trend-up { color: #27ae60; }
+        .trend-down { color: #e74c3c; }
+        .trend-stable { color: #95a5a6; }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <nav class="navbar">
+            <div class="logo"><a href="dashboard.html" style="text-decoration:none; color:inherit;">Mindful Journey</a></div>
+            <div class="nav-links">
+                <a href="dashboard.html" class="btn btn-secondary">Dashboard</a>
+                <a href="profile.html" class="btn btn-secondary">Profile</a>
+                <button onclick="clearSession()" class="btn btn-cta" style="border:none; font-size: 1rem; padding: 0.5rem 1rem;">Logout</button>
+            </div>
+        </nav>
+        
+        <div class="dashboard-container">
+            <h2>📈 Mood Analytics & Trends</h2>
+            
+            <div class="analytics-grid">
+                <!-- Mood Chart -->
+                <div class="chart-container">
+                    <h3 style="margin-top: 0; color: var(--text-color);">Mood Score Over Time</h3>
+                    <div style="position: relative; height: 350px;">
+                        <canvas id="moodChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Current Streak</div>
+                        <div class="stat-value" id="streak-display">🔥 0</div>
+                        <p style="color: #666; font-size: 0.85rem; margin: 0.5rem 0 0 0;">Days in a row!</p>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-label">Total Entries</div>
+                        <div class="stat-value" id="total-entries">0</div>
+                        <p style="color: #666; font-size: 0.85rem; margin: 0.5rem 0 0 0;">Reflections logged</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Average Mood</div>
+                        <div class="stat-value" id="avg-mood">0</div>
+                        <p style="color: #666; font-size: 0.85rem; margin: 0.5rem 0 0 0;">Out of 10</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-label">Emotional Trend</div>
+                        <div class="stat-value" id="trend-value" style="font-size: 2rem;">-</div>
+                        <div class="trend-indicator" id="trend-indicator">📊</div>
+                        <p id="trend-text" style="color: #666; font-size: 0.85rem; margin: 0.5rem 0 0 0;">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=4"></script>
+    <script>
+        requireAuth();
+        
+        async function loadAnalytics() {
+            const history = await getHistory();
+            
+            if (history.length === 0) {
+                document.querySelector('.chart-container').innerHTML = '<p style="text-align: center; padding: 3rem; color: #666;">No entries yet. Start journaling to see your mood trends!</p>';
+                return;
+            }
+            
+            // Sort by date ascending
+            const sortedHistory = [...history].reverse();
+            
+            // Prepare chart data
+            const labels = sortedHistory.map(entry => {
+                const d = new Date(entry.date);
+                return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            });
+            
+            const data = sortedHistory.map(entry => entry.score || 5);
+            
+            // Calculate statistics
+            const avgMood = (data.reduce((a, b) => a + b, 0) / data.length).toFixed(1);
+            const streak = calculateStreak(sortedHistory);
+            const total = history.length;
+            
+            // Calculate trend (compare first half vs second half)
+            const midpoint = Math.floor(data.length / 2);
+            const firstHalf = data.slice(0, midpoint);
+            const secondHalf = data.slice(midpoint);
+            const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+            const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+            const trendDiff = avgSecond - avgFirst;
+            const trendPercent = ((trendDiff / avgFirst) * 100).toFixed(1);
+            
+            let trendEmoji, trendClass, trendText;
+            if (trendDiff > 0.5) {
+                trendEmoji = '📈';
+                trendClass = 'trend-up';
+                trendText = `Improving by ${Math.abs(trendPercent)}%`;
+            } else if (trendDiff < -0.5) {
+                trendEmoji = '📉';
+                trendClass = 'trend-down';
+                trendText = `Declining by ${Math.abs(trendPercent)}%`;
+            } else {
+                trendEmoji = '➡️';
+                trendClass = 'trend-stable';
+                trendText = 'Stable';
+            }
+            
+            // Render Chart with animations
+            const ctx = document.getElementById('moodChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Mood Score',
+                        data: data,
+                        borderColor: '#ff9a9e',
+                        backgroundColor: (context) => {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                            gradient.addColorStop(0, 'rgba(255, 154, 158, 0.1)');
+                            gradient.addColorStop(1, 'rgba(255, 154, 158, 0.4)');
+                            return gradient;
+                        },
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#ff9a9e',
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value) {
+                                    return value + '/10';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Mood: ' + context.parsed.y + '/10';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Animate statistics
+            animateValue("streak-display", 0, streak, 1500, "🔥 ");
+            animateValue("total-entries", 0, total, 1500, "");
+            animateValue("avg-mood", 0, parseFloat(avgMood), 1500, "", 1);
+            
+            // Set trend
+            document.getElementById('trend-value').textContent = trendEmoji;
+            document.getElementById('trend-indicator').className = 'trend-indicator ' + trendClass;
+            document.getElementById('trend-text').textContent = trendText;
+        }
+        
+        function animateValue(id, start, end, duration, prefix = "", decimals = 0) {
+            if (start === end) {
+                document.getElementById(id).textContent = prefix + end.toFixed(decimals);
+                return;
+            }
+            const range = end - start;
+            const increment = range / (duration / 16); // 60fps
+            let current = start;
+            const obj = document.getElementById(id);
+            const timer = setInterval(function() {
+                current += increment;
+                if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+                    obj.textContent = prefix + end.toFixed(decimals);
+                    clearInterval(timer);
+                } else {
+                    obj.textContent = prefix + current.toFixed(decimals);
+                }
+            }, 16);
+        }
+        
+        loadAnalytics();
+    </script>
+</body>
+</html>

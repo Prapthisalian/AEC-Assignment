@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Mindful Journey</title>
+    <link rel="stylesheet" href="style.css?v=7">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .profile-card {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .profile-card h3 {
+            margin-top: 0;
+            color: var(--text-color);
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-info-item {
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-info-item label {
+            display: block;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .profile-info-item .value {
+            font-size: 1.1rem;
+            color: var(--text-color);
+        }
+
+        .streak-display {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .streak-number {
+            font-size: 4rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .fire-emoji {
+            font-size: 4rem;
+            animation: flicker 2s infinite;
+        }
+
+        @keyframes flicker {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .reminder-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .reminder-controls input {
+            flex: 1;
+        }
+
+        .reminder-controls button {
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-item {
+            padding: 1.5rem;
+            background: rgba(255, 154, 158, 0.1);
+            border-radius: 15px;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 0.5rem 0;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .save-message {
+            display: none;
+            color: #27ae60;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .save-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <nav class="navbar">
+            <div class="logo"><a href="dashboard.html" style="text-decoration:none; color:inherit;">Mindful Journey</a></div>
+            <div class="nav-links">
+                <a href="dashboard.html" class="btn btn-secondary">Dashboard</a>
+                <a href="mood_history.html" class="btn btn-secondary">History</a>
+                <a href="mood_analytics.html" class="btn btn-secondary">Analytics</a>
+                <button onclick="clearSession()" class="btn btn-primary" style="background: #ff9a9e; border:none;">Logout</button>
+            </div>
+        </nav>
+        
+        <div class="dashboard-container">
+            <h2>Your Profile</h2>
+            
+            <div class="profile-grid">
+                <!-- User Information Card -->
+                <div class="profile-card">
+                    <h3>Account Information</h3>
+                    <div class="profile-info-item">
+                        <label>Name</label>
+                        <div class="value" id="user-name">-</div>
+                    </div>
+                    <div class="profile-info-item">
+                        <label>Email</label>
+                        <div class="value" id="user-email">-</div>
+                    </div>
+                    <div class="profile-info-item">
+                        <label>Daily Reminder Time</label>
+                        <div class="reminder-controls">
+                            <input type="time" id="reminder-time" class="form-control" value="20:00">
+                            <button onclick="saveReminderTime()" class="btn btn-cta" style="border:none; font-size: 0.9rem; padding: 0.6rem 1.2rem;">Save</button>
+                        </div>
+                        <div class="save-message" id="save-message">✓ Saved!</div>
+                    </div>
+                </div>
+
+                <!-- Streak & Stats Card -->
+                <div class="profile-card">
+                    <h3>Your Progress</h3>
+                    <div class="streak-display">
+                        <div class="stat-label">Current Streak</div>
+                        <div class="streak-number">
+                            <span class="fire-emoji">🔥</span>
+                            <span id="streak-value">0</span>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Total Entries</div>
+                            <div class="stat-number" id="total-entries">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Days Logged</div>
+                            <div class="stat-number" id="unique-days">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=4"></script>
+    <script>
+        requireAuth();
+
+        // Load user profile data
+        function loadProfile() {
+            // Display user info from localStorage
+            const userName = localStorage.getItem('user_name') || 'User';
+            const userEmail = localStorage.getItem('user_email') || 'user@example.com';
+            
+            document.getElementById('user-name').textContent = userName;
+            document.getElementById('user-email').textContent = userEmail;
+
+            // Load reminder time
+            const savedTime = localStorage.getItem('reminder_time') || '20:00';
+            document.getElementById('reminder-time').value = savedTime;
+        }
+
+        // Load stats with animation
+        async function loadStats() {
+            const stats = await getUserStats();
+            const history = await getHistory();
+            
+            // Calculate unique days
+            const uniqueDays = new Set(history.map(entry => entry.date)).size;
+            
+            // Animate values
+            animateValue('streak-value', 0, stats.streak, 1500);
+            animateValue('total-entries', 0, stats.total_entries, 1500);
+            animateValue('unique-days', 0, uniqueDays, 1500);
+        }
+
+        // Animate number increase (Snapchat-style)
+        function animateValue(id, start, end, duration) {
+            if (start === end) {
+                document.getElementById(id).textContent = end;
+                return;
+            }
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const obj = document.getElementById(id);
+            const timer = setInterval(function() {
+                current += increment;
+                obj.textContent = current;
+                if (current == end) {
+                    clearInterval(timer);
+                }
+            }, Math.max(stepTime, 30));
+        }
+
+        // Save reminder time
+        function saveReminderTime() {
+            const time = document.getElementById('reminder-time').value;
+            localStorage.setItem('reminder_time', time);
+            
+            // Show save message
+            const message = document.getElementById('save-message');
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+            }, 2000);
+        }
+
+        // Initialize page
+        loadProfile();
+        loadStats();
+    </script>
+</body>
+</html>

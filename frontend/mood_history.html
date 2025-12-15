@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood History - Mindful Journey</title>
+    <link rel="stylesheet" href="style.css?v=7">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        .history-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .entry-card {
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .entry-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(31, 38, 135, 0.12);
+        }
+
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-right: 100px; /* Make room for delete button */
+        }
+
+        .entry-date {
+            font-weight: 600;
+            color: var(--text-color);
+            font-size: 1.1rem;
+        }
+
+        .entry-mood {
+            background: linear-gradient(to right, #ff9a9e, #fecfef);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .entry-text {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .entry-ai {
+            background: rgba(255, 154, 158, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            border-left: 3px solid var(--accent-color);
+            font-style: italic;
+            color: #666;
+            margin-top: 1rem;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .no-entries {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <nav class="navbar">
+            <div class="logo"><a href="dashboard.html" style="text-decoration:none; color:inherit;">Mindful Journey</a></div>
+            <div class="nav-links">
+                <a href="dashboard.html" class="btn btn-secondary">Dashboard</a>
+                <a href="mood_analytics.html" class="btn btn-secondary">Analytics</a>
+                <a href="profile.html" class="btn btn-secondary">Profile</a>
+                <button onclick="clearSession()" class="btn btn-primary" style="background: #ff9a9e; border:none;">Logout</button>
+            </div>
+        </nav>
+        
+        <div class="history-container">
+            <h2>📝 Your Mood History</h2>
+            <div id="history-list"></div>
+        </div>
+    </div>
+
+    <script src="app.js?v=4"></script>
+    <script>
+        requireAuth();
+        
+        async function loadHistory() {
+            const history = await getHistory();
+            const container = document.getElementById('history-list');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<div class="no-entries">No entries yet. Start journaling on the dashboard!</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            history.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'entry-card';
+                card.innerHTML = `
+                    <button class="delete-btn" onclick="deleteEntry(${entry.id}, '${entry.date}')">🗑️ Delete</button>
+                    <div class="entry-header">
+                        <div class="entry-date">${new Date(entry.date).toLocaleDateString(undefined, { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                        })}</div>
+                        <div class="entry-mood">Mood: ${entry.score}/10</div>
+                    </div>
+                    <div class="entry-text">${entry.text}</div>
+                    <div class="entry-ai">
+                        <strong>💭 AI Reflection:</strong><br>
+                        ${entry.analysis}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        async function deleteEntry(entryId, date) {
+            if (!confirm(`Are you sure you want to delete the entry from ${new Date(date).toLocaleDateString()}?`)) {
+                return;
+            }
+            
+            const userId = getSession();
+            if (!userId) {
+                alert('Please login again');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/diary/entry`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        entry_id: entryId,
+                        user_id: parseInt(userId)
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Entry deleted successfully!');
+                    loadHistory(); // Reload the list
+                } else {
+                    const error = await response.text();
+                    alert('Error deleting entry: ' + error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        loadHistory();
+    </script>
+</body>
+</html>

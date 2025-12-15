@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"E:/Code/Mental/backend/build/_deps/zlib-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

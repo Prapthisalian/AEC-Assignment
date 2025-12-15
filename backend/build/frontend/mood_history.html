@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood History - Mindful Journey</title>
+    <link rel="stylesheet" href="style.css?v=4">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="landing-container">
+        <nav class="navbar">
+            <div class="logo"><a href="dashboard.html" style="text-decoration:none; color:inherit;">Mindful Journey</a></div>
+            <div class="nav-links">
+                <a href="dashboard.html" class="btn btn-secondary">Dashboard</a>
+                <a href="profile.html" class="btn btn-secondary">Profile</a>
+                <button onclick="clearSession()" class="btn btn-primary" style="background: #ff9a9e; border:none;">Logout</button>
+            </div>
+        </nav>
+        
+        <div class="dashboard-container">
+            <h2>Your Journey</h2>
+            <div id="history-list" style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 2rem;">
+                <p>Loading...</p>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <script>
+        requireAuth();
+        
+        async function loadHistory() {
+            const history = await getHistory();
+            const container = document.getElementById('history-list');
+            container.innerHTML = '';
+            
+            if (history.length === 0) {
+                container.innerHTML = '<p>No entries yet. Start journaling!</p>';
+                return;
+            }
+            
+            history.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'feature-card';
+                card.style.width = '100%';
+                card.style.textAlign = 'left';
+                card.style.boxSizing = 'border-box'; // Fix padding/width
+                
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <h4 style="margin: 0; color: #8e9eab;">${entry.date}</h4>
+                    </div>
+                    <p style="font-style: italic; color: #555;">"${entry.text}"</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 1rem 0;">
+                    <p style="font-size: 0.9rem; color: #2c3e50;"><strong>AI Reflection:</strong> ${entry.analysis}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        loadHistory();
+    </script>
+</body>
+</html>

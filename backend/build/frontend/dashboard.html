@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Mindful Journey</title>
+    <link rel="stylesheet" href="style.css?v=4">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="landing-container">
+        <nav class="navbar">
+            <div class="logo"><a href="dashboard.html" style="text-decoration:none; color:inherit;">Mindful Journey</a></div>
+            <div class="nav-links">
+                <a href="mood_history.html" class="btn btn-secondary">History</a>
+                <a href="profile.html" class="btn btn-secondary">Profile</a>
+                <button onclick="clearSession()" class="btn btn-primary" style="background: #ff9a9e; border:none;">Logout</button>
+            </div>
+        </nav>
+        
+        <div class="dashboard-container">
+            <h2 id="welcome-msg">Welcome!</h2>
+            <p id="date-display" style="color: #666; margin-bottom: 2rem;"></p>
+            
+            <div class="diary-input-area">
+                <h3>How are you feeling today?</h3>
+                <textarea id="diary-text" placeholder="Write your thoughts here... or use voice input."></textarea>
+                
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button id="voice-btn" class="btn btn-secondary">🎤 Voice Input</button>
+                    <button id="save-btn" class="btn btn-cta">Save Entry</button>
+                    <span id="listening-indicator" style="display: none; color: red;">Listening...</span>
+                </div>
+            </div>
+            
+            <div id="ai-reflection" class="feature-card" style="width: 100%; margin-top: 2rem; display: none; text-align: left;">
+                <h3 style="margin-top: 0;">AI Reflection</h3>
+                <p id="ai-text" style="font-style: italic; color: #555;"></p>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <script>
+        requireAuth();
+        
+        // Setup Date
+        const today = new Date();
+        document.getElementById('date-display').textContent = today.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // Voice Input Logic
+        const voiceBtn = document.getElementById('voice-btn');
+        const textArea = document.getElementById('diary-text');
+        const indicator = document.getElementById('listening-indicator');
+        
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            voiceBtn.onclick = () => {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error("Recognition start error", e);
+                }
+            };
+            
+            recognition.onstart = () => {
+                voiceBtn.textContent = "🔴 Listening...";
+                voiceBtn.classList.add('listening'); // Use class instead of inline style
+                indicator.style.display = 'inline';
+            };
+
+            recognition.onend = () => {
+                voiceBtn.textContent = "🎤 Voice Input";
+                voiceBtn.classList.remove('listening');
+                indicator.style.display = 'none';
+            };
+
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                textArea.value += (textArea.value ? ' ' : '') + text;
+                // UI reset handled by onend
+            };
+            
+            recognition.onerror = (event) => {
+                console.error("Voice Error:", event.error);
+                if (event.error === 'no-speech') {
+                    alert('No speech detected. Please check your microphone and speak clearly.');
+                } else if (event.error === 'not-allowed') {
+                    alert('Microphone access denied. Please allow microphone permissions in your browser settings.');
+                } else {
+                    alert('Voice error: ' + event.error);
+                }
+            };
+        } else {
+            voiceBtn.style.display = 'none';
+        }
+        
+        // Save Entry
+        document.getElementById('save-btn').onclick = async () => {
+            const text = textArea.value;
+            if (!text.trim()) return alert("Please write something!");
+            
+            const btn = document.getElementById('save-btn');
+            btn.textContent = "Analyzing...";
+            btn.disabled = true;
+            
+            const result = await addEntry(today.toISOString().split('T')[0], text);
+            
+            btn.textContent = "Save Entry";
+            btn.disabled = false;
+            
+            if (result.success) {
+                document.getElementById('ai-text').textContent = result.analysis;
+                document.getElementById('ai-reflection').style.display = 'block';
+                textArea.value = ''; // Clear input if desired, or keep it.
+            } else {
+                alert('Error: ' + result.error);
+            }
+        };
+    </script>
+</body>
+</html>
