@@ -52,6 +52,8 @@ async function login(email, password) {
         if (response.ok) {
             const data = await response.json();
             setSession(data.user_id);
+            localStorage.setItem('user_name', data.name);
+            localStorage.setItem('user_email', data.email);
             return { success: true };
         } else {
             const text = await response.text();
@@ -99,25 +101,98 @@ async function getHistory() {
     return [];
 }
 
+async function getUserStats() {
+    const userId = getSession();
+    if (!userId) return { streak: 0, total_entries: 0 };
+
+    try {
+        const response = await fetch(`${API_BASE}/user/stats?user_id=${userId}`);
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    return { streak: 0, total_entries: 0 };
+}
+
 // --- Theme Helper ---
 function applyTheme() {
-    // FORCE RESET: Overwrite any stuck 'dark' preference to 'light'
-    let theme = localStorage.getItem('theme');
+    const theme = localStorage.getItem('theme');
+    const toggle = document.getElementById('dark-mode-toggle');
 
-    // Auto-fix for stuck users
-    if (theme === 'dark') {
-        console.log("Resetting theme to light");
-        localStorage.setItem('theme', 'light');
-        theme = 'light';
-    }
-
+    // Apply class
     if (theme === 'dark') {
         document.body.classList.add('dark-mode');
+        if (toggle) toggle.checked = true;
     } else {
         document.body.classList.remove('dark-mode');
+        if (toggle) toggle.checked = false;
+    }
+}
+
+function toggleTheme(e) {
+    if (e.target.checked) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('theme', 'light');
+    }
+}
+
+// Init Theme Controls
+function initTheme() {
+    applyTheme();
+
+    // If on profile page (or any page with the toggle), attach listener
+    const toggle = document.getElementById('dark-mode-toggle');
+    if (toggle) {
+        toggle.addEventListener('change', toggleTheme);
     }
 }
 
 // Apply on load
-document.addEventListener('DOMContentLoaded', applyTheme);
+document.addEventListener('DOMContentLoaded', initTheme);
+
+// --- Analytics Helpers ---
+function calculateStreak(sortedHistory) {
+    if (!sortedHistory || sortedHistory.length === 0) return 0;
+
+    // Ensure sorted by date ascending
+    const uniqueDates = [...new Set(sortedHistory.map(h => h.date))].sort().reverse();
+    // Now descending: today, yesterday...
+
+    if (uniqueDates.length === 0) return 0;
+
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+    let streak = 0;
+
+    // If the latest entry is not today AND not yesterday, streak is 0
+    if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) {
+        return 0;
+    }
+
+    let checkDate = new Date();
+    // If latest is today, start checking from today. If latest is yesterday, start from yesterday.
+    if (uniqueDates[0] !== today) {
+        checkDate.setDate(checkDate.getDate() - 1); // Start from yesterday
+    }
+
+    for (let i = 0; i < uniqueDates.length; i++) {
+        const target = checkDate.toISOString().split('T')[0];
+        if (uniqueDates[i] === target) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1); // Move back one day
+        } else {
+            break;
+        }
+    }
+
+    return streak;
+}
+
+
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Mindful Journey</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=6">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -13,6 +13,7 @@
             <div class="logo"><a href="dashboard.html" style="text-decoration:none; color:inherit;">Mindful Journey</a></div>
             <div class="nav-links">
                 <a href="mood_history.html" class="btn btn-secondary">History</a>
+                <a href="mood_analytics.html" class="btn btn-secondary">Analytics</a>
                 <a href="profile.html" class="btn btn-secondary">Profile</a>
                 <button onclick="clearSession()" class="btn btn-primary" style="background: #ff9a9e; border:none;">Logout</button>
             </div>
@@ -20,7 +21,7 @@
         
         <div class="dashboard-container">
             <h2 id="welcome-msg">Welcome!</h2>
-            <p id="date-display" style="color: #666; margin-bottom: 2rem;"></p>
+            <p id="date-display" style="margin-bottom: 2rem;"></p>
             
             <div class="diary-input-area">
                 <h3>How are you feeling today?</h3>
@@ -35,11 +36,11 @@
             
             <div id="ai-reflection" class="feature-card" style="width: 100%; margin-top: 2rem; display: none; text-align: left;">
                 <h3 style="margin-top: 0;">AI Reflection</h3>
-                <p id="ai-text" style="font-style: italic; color: #555;"></p>
+                <p id="ai-text" style="font-style: italic;"></p>
             </div>
         </div>
     </div>
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
     <script>
         requireAuth();
         
@@ -47,54 +48,140 @@
         const today = new Date();
         document.getElementById('date-display').textContent = today.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         
-        // Voice Input Logic
+        // Voice Input Logic - Continuous Mode with Manual Stop
         const voiceBtn = document.getElementById('voice-btn');
         const textArea = document.getElementById('diary-text');
         const indicator = document.getElementById('listening-indicator');
         
-        if ('webkitSpeechRecognition' in window) {
-            const recognition = new webkitSpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition = null;
+            let isListening = false;
+            let finalTranscript = '';
             
             voiceBtn.onclick = () => {
+                if (isListening) {
+                    // Stop listening
+                    console.log('🛑 Stopping recognition');
+                    if (recognition) {
+                        recognition.stop();
+                    }
+                    isListening = false;
+                    voiceBtn.textContent = "🎤 Voice Input";
+                    voiceBtn.classList.remove('listening');
+                    indicator.style.display = 'none';
+                    return;
+                }
+                
+                // Start listening
+                console.log('🎤 Starting recognition');
+                isListening = true;
+                finalTranscript = '';
+                
+                // Create new recognition instance
+                if (recognition) {
+                    try { recognition.abort(); } catch(e) {}
+                }
+                
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;  // Keep listening
+                recognition.interimResults = true;  // Show interim results
+                recognition.lang = 'en-US';
+                recognition.maxAlternatives = 1;
+                
+                recognition.onstart = () => {
+                    console.log('✓ Recognition started');
+                    voiceBtn.textContent = "🔴 Listening (Click to Stop)";
+                    voiceBtn.classList.add('listening');
+                    indicator.style.display = 'inline';
+                    indicator.textContent = '🎤 Listening... Speak now!';
+                };
+                
+                recognition.onend = () => {
+                    console.log('✓ Recognition ended');
+                    isListening = false;
+                    voiceBtn.textContent = "🎤 Voice Input";
+                    voiceBtn.classList.remove('listening');
+                    
+                    // Apply final transcript
+                    if (finalTranscript.trim()) {
+                        if (textArea.value.trim()) {
+                            textArea.value += ' ' + finalTranscript.trim();
+                        } else {
+                            textArea.value = finalTranscript.trim();
+                        }
+                        indicator.textContent = '✓ Done! Your text is ready.';
+                        setTimeout(() => indicator.style.display = 'none', 3000);
+                    } else {
+                        indicator.style.display = 'none';
+                    }
+                };
+                
+                recognition.onresult = (event) => {
+                    console.log('📝 Got results');
+                    let interimTranscript = '';
+                    
+                    // Process all results
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript + ' ';
+                            console.log('✓ Final:', transcript);
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    // Show what we're hearing
+                    if (interimTranscript) {
+                        indicator.textContent = '🎤 Hearing: "' + interimTranscript + '"';
+                        console.log('👂 Interim:', interimTranscript);
+                    } else if (finalTranscript) {
+                        indicator.textContent = '✓ Got: "' + finalTranscript.trim() + '" (keep talking or click stop)';
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('❌ Error:', event.error);
+                    
+                    if (event.error === 'no-speech') {
+                        // Don't stop, just inform
+                        indicator.textContent = '⏸️ Waiting for speech... (speak louder or click to stop)';
+                        // Don't set isListening = false, let it keep trying
+                        return;
+                    } else if (event.error === 'audio-capture') {
+                        alert('No microphone detected.');
+                        isListening = false;
+                    } else if (event.error === 'not-allowed') {
+                        alert('Microphone permission denied. Please:\n1. Click the 🔒 icon in address bar\n2. Allow microphone\n3. Refresh page');
+                        isListening = false;
+                    } else if (event.error === 'aborted') {
+                        console.log('Recognition aborted');
+                        isListening = false;
+                    } else {
+                        indicator.textContent = '⚠️ Error: ' + event.error;
+                        setTimeout(() => indicator.style.display = 'none', 3000);
+                        isListening = false;
+                    }
+                    
+                    if (!isListening) {
+                        voiceBtn.textContent = "🎤 Voice Input";
+                        voiceBtn.classList.remove('listening');
+                    }
+                };
+                
+                // Start it!
                 try {
                     recognition.start();
                 } catch (e) {
-                    console.error("Recognition start error", e);
-                }
-            };
-            
-            recognition.onstart = () => {
-                voiceBtn.textContent = "🔴 Listening...";
-                voiceBtn.classList.add('listening'); // Use class instead of inline style
-                indicator.style.display = 'inline';
-            };
-
-            recognition.onend = () => {
-                voiceBtn.textContent = "🎤 Voice Input";
-                voiceBtn.classList.remove('listening');
-                indicator.style.display = 'none';
-            };
-
-            recognition.onresult = (event) => {
-                const text = event.results[0][0].transcript;
-                textArea.value += (textArea.value ? ' ' : '') + text;
-                // UI reset handled by onend
-            };
-            
-            recognition.onerror = (event) => {
-                console.error("Voice Error:", event.error);
-                if (event.error === 'no-speech') {
-                    alert('No speech detected. Please check your microphone and speak clearly.');
-                } else if (event.error === 'not-allowed') {
-                    alert('Microphone access denied. Please allow microphone permissions in your browser settings.');
-                } else {
-                    alert('Voice error: ' + event.error);
+                    console.error('❌ Start failed:', e);
+                    alert('Could not start voice recognition. Please refresh the page.');
+                    isListening = false;
                 }
             };
         } else {
             voiceBtn.style.display = 'none';
+            console.warn('Speech recognition not supported');
         }
         
         // Save Entry

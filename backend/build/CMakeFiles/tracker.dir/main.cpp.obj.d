@@ -1206,5 +1206,4 @@ CMakeFiles/tracker.dir/main.cpp.obj: E:\Code\Mental\backend\main.cpp \
  E:/Code/Mental/backend/build/_deps/json-src/include/nlohmann/ordered_map.hpp \
  E:/Code/Mental/backend/build/_deps/json-src/include/nlohmann/detail/macro_unscope.hpp \
  E:/Code/Mental/backend/build/_deps/json-src/include/nlohmann/thirdparty/hedley/hedley_undef.hpp \
- E:/Code/Mental/backend/build/_deps/sqlite3-src/sqlite3.h \
- E:\Code\Mental\backend\sha256.hpp
+ E:/Code/Mental/backend/build/_deps/sqlite3-src/sqlite3.h

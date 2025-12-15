@@ -7,7 +7,6 @@
 #include <nlohmann/json.hpp>
 #include <mutex>
 #include <sqlite3.h>
-#include "sha256.hpp"
 
 using json = nlohmann::json;
 
@@ -114,10 +113,8 @@ int main() {
         std::string email = x["email"];
         std::string password = x["password"];
         
-        SHA256 hasher;
-        std::string password_hash = hasher(password);
-        
-        std::string sql = "INSERT INTO users (name, email, password_hash) VALUES ('" + name + "', '" + email + "', '" + password_hash + "');";
+        // Store password directly (not recommended for production)
+        std::string sql = "INSERT INTO users (name, email, password_hash) VALUES ('" + name + "', '" + email + "', '" + password + "');";
         
         char* zErrMsg = 0;
         int rc = sqlite3_exec(db, sql.c_str(), 0, 0, &zErrMsg);
@@ -136,10 +133,8 @@ int main() {
         std::string email = x["email"];
         std::string password = x["password"];
         
-        SHA256 hasher;
-        std::string password_hash = hasher(password);
-        
-        std::string sql = "SELECT id, name, email FROM users WHERE email='" + email + "' AND password_hash='" + password_hash + "';";
+        // Check password directly (not recommended for production)
+        std::string sql = "SELECT id, name, email FROM users WHERE email='" + email + "' AND password_hash='" + password + "';";
         
         sqlite3_stmt* stmt;
         int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
@@ -395,6 +390,20 @@ int main() {
         res.set_static_file_info("frontend/index.html");
         res.end();
     });
+       CROW_ROUTE(app, "/gets")([](const crow::request& req, crow::response& res){
+        sqlite3_stmt* stmt;
+        int rc = sqlite3_prepare_v2(db, "SELECT * FROM users", -1, &stmt, 0);
+        std::cout << "SELECT * FROM users" << std::endl;
+        
+        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+            std::cout << "ID: " << sqlite3_column_int(stmt, 0) << std::endl;
+            std::cout << "Name: " << reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)) << std::endl;
+            std::cout << "Email: " << reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)) << std::endl;
+            std::cout << "Password: " << reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3)) << std::endl;
+        }
+        sqlite3_finalize(stmt);
+        res.end();
+    });
 
     CROW_ROUTE(app, "/<string>")([](const crow::request& req, crow::response& res, std::string path){
         if (path.find("..") != std::string::npos) {
@@ -402,7 +411,7 @@ int main() {
             res.end();
             return;
         }
-        res.set_static_file_info("frontend/" + path);
+        res.set_static_file_info("frontend/" + path); 
         res.end();
     });
 
