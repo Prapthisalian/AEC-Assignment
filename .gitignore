@@ -1,6 +1,80 @@
-./backend/build/
-./backend/node_modules/
-./backend/target/
-./backend/vendor/
-./backend/__pycache__/
-./backend/.venv/
+# Build artifacts
+backend/build/
+backend/*.exe
+backend/*.o
+backend/*.obj
+backend/*.dll
+backend/*.so
+backend/*.dylib
+backend/tracker.exe
+*.pdb
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+mental_health.db
+
+# IDE and Editor files
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Dependencies
+node_modules/
+vcpkg_installed/
+backend/_deps/
+backend/node_modules/
+backend/target/
+backend/vendor/
+backend/__pycache__/
+backend/.venv/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Package files
+*.zip
+*.tar.gz
+*.rar
